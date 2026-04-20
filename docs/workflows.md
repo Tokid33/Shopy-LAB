@@ -35,3 +35,8 @@
 1. `POST /agents/product-scout/run` — запускает Product Scout Agent в mock-режиме.
 2. `POST /agents/supplier-check/run` — запускает Supplier Check Agent в mock-режиме.
 3. `GET /agents/runs/{run_id}` — возвращает статус и сохранённый output запуска.
+
+## Agent workflows (real)
+1. `POST /agents/product-scout/run-real` — ограниченный real execution path через adapters.
+2. `POST /agents/supplier-check/run-real` — ограниченный real execution path через adapters.
+3. `GET /agents/providers/health` — health/config visibility по провайдерам.

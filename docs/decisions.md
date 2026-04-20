@@ -25,3 +25,7 @@
 ## D-008: Agent-ready foundation через mock adapters
 Добавлен минимальный agent слой (run/task/artifact/decision-log) и интерфейсы провайдеров.
 Реальные интеграции отложены; демо-режим работает на fake adapters для безопасного локального старта.
+
+## D-009: Dual-mode agent execution (mock + real)
+Mock mode остаётся default и безопасным.
+Real mode включается конфигом и проходит через provider factory с controlled failures при misconfiguration.

@@ -41,6 +41,7 @@ def test_product_scout_and_supplier_check_flow() -> None:
     run_lookup = client.get(f"/agents/runs/{scout_data['run_id']}")
     assert run_lookup.status_code == 200
     assert run_lookup.json()["status"] == "completed"
+    assert run_lookup.json()["trace_id"]
 
     supplier_response = client.post(
         "/agents/supplier-check/run",
@@ -60,9 +61,18 @@ def test_product_scout_and_supplier_check_flow() -> None:
     supplier_data = supplier_response.json()
     assert supplier_data["agent_type"] == "supplier_check"
     assert supplier_data["status"] == "completed"
-    assert supplier_data["final_recommendation"] in {"go_to_site", "reserve", "fail"}
+    assert supplier_data["final_recommendation"] in {"passed", "quick_check", "failed"}
 
     app.dependency_overrides.clear()
+
+
+def test_provider_health_endpoint_available() -> None:
+    client = TestClient(app)
+    response = client.get("/agents/providers/health")
+    assert response.status_code == 200
+    payload = response.json()
+    assert "mode" in payload
+    assert "selected_providers" in payload
 
 
 def test_agent_run_is_persisted_with_completed_status() -> None:

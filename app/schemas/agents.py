@@ -55,6 +55,11 @@ class AgentRunStatusResponse(BaseModel):
     run_id: int
     agent_type: str
     status: str
+    trace_id: str
+    provider_snapshot: dict
+    prompt_path: str | None
+    prompt_version: str | None
+    warnings: list[str]
     input_payload: dict
     output_payload: dict | None
     error_message: str | None

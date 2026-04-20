@@ -55,7 +55,10 @@ Endpoints:
 - `POST /demo-cycle`
 - `POST /agents/product-scout/run`
 - `POST /agents/supplier-check/run`
+- `POST /agents/product-scout/run-real`
+- `POST /agents/supplier-check/run-real`
 - `GET /agents/runs/{run_id}`
+- `GET /agents/providers/health`
 
 ## Запуск demo-cycle через CLI
 ```bash
@@ -86,6 +89,41 @@ curl -X POST http://localhost:8000/agents/product-scout/run \
 curl -X POST http://localhost:8000/agents/supplier-check/run \
   -H "Content-Type: application/json" \
   -d '{"shortlist_items":[{"product_name":"Demo Product","target_price":39,"cost_of_goods":11,"shipping_cost":4}]}'
+```
+
+## Agent execution configuration
+По умолчанию проект работает в безопасном `mock` режиме.
+
+Пример env для real path:
+```bash
+export AGENT_MODE=real
+export SEARCH_PROVIDER=brave
+export FETCH_PROVIDER=http
+export LLM_PROVIDER=openai_compatible
+export SEARCH_API_KEY=your_search_key
+export LLM_BASE_URL=https://api.openai.com/v1
+export LLM_API_KEY=your_llm_key
+export LLM_MODEL=gpt-4o-mini
+```
+
+Дополнительно поддерживаются:
+- `REQUEST_TIMEOUT_SECONDS`
+- `MAX_SEARCH_RESULTS`
+- `MAX_FETCH_PAGES`
+- `MAX_PAGE_TEXT_CHARS`
+- `ENABLE_PROMPT_TRACING`
+- `ENABLE_RAW_ARTIFACT_CAPTURE`
+
+Проверка готовности провайдеров:
+```bash
+curl http://localhost:8000/agents/providers/health
+```
+
+Запуск real endpoints:
+```bash
+curl -X POST http://localhost:8000/agents/product-scout/run-real \
+  -H "Content-Type: application/json" \
+  -d '{"market":"US","categories":["kitchen"],"limit":3}'
 ```
 
 ## Тесты
