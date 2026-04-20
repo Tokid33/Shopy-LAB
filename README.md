@@ -16,6 +16,7 @@
 - Добавлен service workflow одного полного demo-цикла.
 - Добавлена строгая финализация цикла: отдельные сущности final decision и postmortem.
 - Добавлен единый export cycle report (JSON + Markdown) по `hypothesis_id`.
+- Добавлен первый agent-ready слой: Product Scout Agent и Supplier Check Agent (demo/mock).
 - Добавлены тесты: scoring, smoke workflow, model checks.
 - Добавлена документация по архитектуре, доменной модели, workflow и решениям.
 
@@ -52,6 +53,9 @@ uvicorn app.main:app --reload
 Endpoints:
 - `GET /health`
 - `POST /demo-cycle`
+- `POST /agents/product-scout/run`
+- `POST /agents/supplier-check/run`
+- `GET /agents/runs/{run_id}`
 
 ## Запуск demo-cycle через CLI
 ```bash
@@ -68,6 +72,21 @@ python -m app.cli.export_cycle_report --hypothesis-id 1
 - `cycle_report_<id>.md`
 
 Если часть данных цикла отсутствует, это явно помечается как `missing` в отчёте.
+
+## Запуск demo-агентов
+Пример Product Scout:
+```bash
+curl -X POST http://localhost:8000/agents/product-scout/run \
+  -H "Content-Type: application/json" \
+  -d '{"market":"US","categories":["kitchen","wellness"],"limit":3}'
+```
+
+Пример Supplier Check:
+```bash
+curl -X POST http://localhost:8000/agents/supplier-check/run \
+  -H "Content-Type: application/json" \
+  -d '{"shortlist_items":[{"product_name":"Demo Product","target_price":39,"cost_of_goods":11,"shipping_cost":4}]}'
+```
 
 ## Тесты
 ```bash

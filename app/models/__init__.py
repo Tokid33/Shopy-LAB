@@ -1,5 +1,9 @@
 from app.models.entities import (
     ArtifactPackage,
+    AgentArtifact,
+    AgentDecisionLog,
+    AgentRun,
+    AgentTask,
     CompetitorSnapshot,
     Creative,
     Decision,
@@ -32,4 +36,8 @@ __all__ = [
     "UnitEconomics",
     "FinalDecision",
     "Postmortem",
+    "AgentRun",
+    "AgentTask",
+    "AgentArtifact",
+    "AgentDecisionLog",
 ]

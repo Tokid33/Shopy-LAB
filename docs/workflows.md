@@ -30,3 +30,8 @@
 - CLI: `python -m app.cli.export_cycle_report --hypothesis-id <id>`
 - Форматы: JSON + Markdown
 - Если часть данных отсутствует, секция маркируется как `missing` без падения процесса.
+
+## Agent workflows (demo)
+1. `POST /agents/product-scout/run` — запускает Product Scout Agent в mock-режиме.
+2. `POST /agents/supplier-check/run` — запускает Supplier Check Agent в mock-режиме.
+3. `GET /agents/runs/{run_id}` — возвращает статус и сохранённый output запуска.

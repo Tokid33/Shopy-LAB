@@ -4,7 +4,7 @@ from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String, Text,
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.models.enums import DecisionStage, HypothesisStatus
+from app.models.enums import AgentRunStatus, AgentType, DecisionStage, HypothesisStatus
 
 
 class ProductHypothesis(Base):
@@ -30,6 +30,7 @@ class ProductHypothesis(Base):
     knowledge_items: Mapped[list["KnowledgeBase"]] = relationship(back_populates="hypothesis")
     final_decision: Mapped["FinalDecision"] = relationship(back_populates="hypothesis", uselist=False)
     postmortem: Mapped["Postmortem"] = relationship(back_populates="hypothesis", uselist=False)
+    agent_runs: Mapped[list["AgentRun"]] = relationship(back_populates="hypothesis")
 
 
 class ProductCard(Base):
@@ -236,3 +237,64 @@ class Postmortem(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     hypothesis: Mapped[ProductHypothesis] = relationship(back_populates="postmortem")
+
+
+class AgentRun(Base):
+    __tablename__ = "agent_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    hypothesis_id: Mapped[int | None] = mapped_column(ForeignKey("product_hypotheses.id"), nullable=True)
+    agent_type: Mapped[AgentType] = mapped_column(Enum(AgentType), nullable=False)
+    status: Mapped[AgentRunStatus] = mapped_column(Enum(AgentRunStatus), nullable=False)
+    input_payload: Mapped[str] = mapped_column(Text, nullable=False)
+    output_payload: Mapped[str | None] = mapped_column(Text, nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    hypothesis: Mapped[ProductHypothesis | None] = relationship(back_populates="agent_runs")
+    tasks: Mapped[list["AgentTask"]] = relationship(back_populates="run")
+    artifacts: Mapped[list["AgentArtifact"]] = relationship(back_populates="run")
+    decision_logs: Mapped[list["AgentDecisionLog"]] = relationship(back_populates="run")
+
+
+class AgentTask(Base):
+    __tablename__ = "agent_tasks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("agent_runs.id"), nullable=False)
+    task_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    status: Mapped[str] = mapped_column(String(40), nullable=False)
+    input_payload: Mapped[str] = mapped_column(Text, nullable=False)
+    output_payload: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    run: Mapped[AgentRun] = relationship(back_populates="tasks")
+
+
+class AgentArtifact(Base):
+    __tablename__ = "agent_artifacts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("agent_runs.id"), nullable=False)
+    artifact_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    content_uri: Mapped[str | None] = mapped_column(String(400), nullable=True)
+    content_payload: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    run: Mapped[AgentRun] = relationship(back_populates="artifacts")
+
+
+class AgentDecisionLog(Base):
+    __tablename__ = "agent_decision_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("agent_runs.id"), nullable=False)
+    item_ref: Mapped[str] = mapped_column(String(200), nullable=False)
+    decision: Mapped[str] = mapped_column(String(60), nullable=False)
+    rationale: Mapped[str] = mapped_column(Text, nullable=False)
+    score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    run: Mapped[AgentRun] = relationship(back_populates="decision_logs")

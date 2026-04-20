@@ -30,3 +30,15 @@ class DecisionStage(str, Enum):
     site = "site"
     traffic = "traffic"
     final = "final"
+
+
+class AgentRunStatus(str, Enum):
+    created = "created"
+    running = "running"
+    completed = "completed"
+    failed = "failed"
+
+
+class AgentType(str, Enum):
+    product_scout = "product_scout"
+    supplier_check = "supplier_check"

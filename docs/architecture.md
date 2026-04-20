@@ -5,7 +5,7 @@
 
 ## Слои
 - **API (FastAPI)**: health + запуск demo cycle.
-- **Service layer**: scoring, unit economics, strict finalization/postmortem, cycle report export.
+- **Service layer**: scoring, unit economics, strict finalization/postmortem, cycle report export, agent orchestration.
 - **Repository layer**: базовые операции с гипотезами.
 - **Data layer**: SQLAlchemy модели + Alembic миграции + SQLite.
 - **Tests**: unit/smoke/model проверки.
