@@ -1,0 +1,420 @@
+from datetime import datetime
+
+from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.db.base import Base
+from app.models.enums import AgentRunStatus, AgentType, DecisionStage, HypothesisStatus
+from app.models.enums import (
+    FinalDecisionState,
+    HypothesisLifecycleState,
+    IncidentSeverity,
+    LandingPageState,
+    ResearchDecisionVerdict,
+    ResearchSignalType,
+    TrafficTestState,
+)
+
+
+class ProductHypothesis(Base):
+    __tablename__ = "product_hypotheses"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(200))
+    problem_statement: Mapped[str] = mapped_column(Text)
+    target_audience: Mapped[str] = mapped_column(String(200))
+    status: Mapped[HypothesisStatus] = mapped_column(
+        Enum(HypothesisStatus), default=HypothesisStatus.draft
+    )
+    lifecycle_state: Mapped[HypothesisLifecycleState] = mapped_column(
+        Enum(HypothesisLifecycleState), default=HypothesisLifecycleState.product_discovery
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    product_card: Mapped["ProductCard"] = relationship(back_populates="hypothesis", uselist=False)
+    supplier_assessments: Mapped[list["SupplierAssessment"]] = relationship(back_populates="hypothesis")
+    competitor_snapshots: Mapped[list["CompetitorSnapshot"]] = relationship(back_populates="hypothesis")
+    unit_economics: Mapped["UnitEconomics"] = relationship(back_populates="hypothesis", uselist=False)
+    offers: Mapped[list["Offer"]] = relationship(back_populates="hypothesis")
+    traffic_tests: Mapped[list["TrafficTest"]] = relationship(back_populates="hypothesis")
+    decisions: Mapped[list["Decision"]] = relationship(back_populates="hypothesis")
+    artifacts: Mapped[list["ArtifactPackage"]] = relationship(back_populates="hypothesis")
+    knowledge_items: Mapped[list["KnowledgeBase"]] = relationship(back_populates="hypothesis")
+    final_decision: Mapped["FinalDecision"] = relationship(back_populates="hypothesis", uselist=False)
+    postmortem: Mapped["Postmortem"] = relationship(back_populates="hypothesis", uselist=False)
+    agent_runs: Mapped[list["AgentRun"]] = relationship(back_populates="hypothesis")
+    source_evidences: Mapped[list["SourceEvidence"]] = relationship(back_populates="hypothesis")
+    normalized_signals: Mapped[list["NormalizedSignal"]] = relationship(back_populates="hypothesis")
+    product_scores: Mapped[list["ProductScore"]] = relationship(back_populates="hypothesis")
+    decision_cards: Mapped[list["DecisionCard"]] = relationship(back_populates="hypothesis")
+    incidents: Mapped[list["Incident"]] = relationship(back_populates="hypothesis")
+
+
+class ProductCard(Base):
+    __tablename__ = "product_cards"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    hypothesis_id: Mapped[int] = mapped_column(ForeignKey("product_hypotheses.id"), unique=True)
+    product_name: Mapped[str] = mapped_column(String(200))
+    category: Mapped[str] = mapped_column(String(120))
+    cost_of_goods: Mapped[float] = mapped_column(Float)
+    target_price: Mapped[float] = mapped_column(Float)
+    shipping_cost: Mapped[float] = mapped_column(Float)
+
+    problem_or_desire_score: Mapped[int] = mapped_column(Integer)
+    visual_potential_score: Mapped[int] = mapped_column(Integer)
+    margin_score: Mapped[int] = mapped_column(Integer)
+    ad_risk_score: Mapped[int] = mapped_column(Integer)
+    logistics_risk_score: Mapped[int] = mapped_column(Integer)
+
+    total_score: Mapped[float] = mapped_column(Float, default=0)
+    product_decision: Mapped[str] = mapped_column(String(40), default="reserve")
+
+    hypothesis: Mapped[ProductHypothesis] = relationship(back_populates="product_card")
+
+
+class SupplierAssessment(Base):
+    __tablename__ = "supplier_assessments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    hypothesis_id: Mapped[int] = mapped_column(ForeignKey("product_hypotheses.id"))
+    supplier_name: Mapped[str] = mapped_column(String(200))
+    lead_time_days: Mapped[int] = mapped_column(Integer)
+    quality_risk_note: Mapped[str] = mapped_column(Text)
+    moq_units: Mapped[int] = mapped_column(Integer)
+    verified: Mapped[int] = mapped_column(Integer, default=0)
+
+    hypothesis: Mapped[ProductHypothesis] = relationship(back_populates="supplier_assessments")
+
+
+class CompetitorSnapshot(Base):
+    __tablename__ = "competitor_snapshots"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    hypothesis_id: Mapped[int] = mapped_column(ForeignKey("product_hypotheses.id"))
+    competitor_name: Mapped[str] = mapped_column(String(200))
+    url: Mapped[str] = mapped_column(String(500))
+    price: Mapped[float] = mapped_column(Float)
+    positioning_angle: Mapped[str] = mapped_column(String(200))
+
+    hypothesis: Mapped[ProductHypothesis] = relationship(back_populates="competitor_snapshots")
+
+
+class UnitEconomics(Base):
+    __tablename__ = "unit_economics"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    hypothesis_id: Mapped[int] = mapped_column(ForeignKey("product_hypotheses.id"), unique=True)
+    cogs: Mapped[float] = mapped_column(Float)
+    shipping_cost: Mapped[float] = mapped_column(Float)
+    ad_cost_per_order: Mapped[float] = mapped_column(Float)
+    transaction_fee: Mapped[float] = mapped_column(Float)
+    selling_price: Mapped[float] = mapped_column(Float)
+    contribution_margin: Mapped[float] = mapped_column(Float)
+    margin_percent: Mapped[float] = mapped_column(Float)
+    break_even_roas: Mapped[float] = mapped_column(Float)
+
+    hypothesis: Mapped[ProductHypothesis] = relationship(back_populates="unit_economics")
+
+
+class Offer(Base):
+    __tablename__ = "offers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    hypothesis_id: Mapped[int] = mapped_column(ForeignKey("product_hypotheses.id"))
+    title: Mapped[str] = mapped_column(String(200))
+    angle: Mapped[str] = mapped_column(String(200))
+    value_proposition: Mapped[str] = mapped_column(Text)
+
+    hypothesis: Mapped[ProductHypothesis] = relationship(back_populates="offers")
+    landing_pages: Mapped[list["LandingPage"]] = relationship(back_populates="offer")
+
+
+class LandingPage(Base):
+    __tablename__ = "landing_pages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    offer_id: Mapped[int] = mapped_column(ForeignKey("offers.id"))
+    hero_block: Mapped[str] = mapped_column(Text)
+    benefits_block: Mapped[str] = mapped_column(Text)
+    proof_block: Mapped[str] = mapped_column(Text)
+    offer_block: Mapped[str] = mapped_column(Text)
+    faq_block: Mapped[str] = mapped_column(Text)
+    mobile_ready: Mapped[int] = mapped_column(Integer, default=0)
+    lifecycle_state: Mapped[LandingPageState] = mapped_column(
+        Enum(LandingPageState), default=LandingPageState.draft
+    )
+
+    offer: Mapped[Offer] = relationship(back_populates="landing_pages")
+
+
+class Creative(Base):
+    __tablename__ = "creatives"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    traffic_test_id: Mapped[int] = mapped_column(ForeignKey("traffic_tests.id"))
+    format: Mapped[str] = mapped_column(String(60))
+    angle: Mapped[str] = mapped_column(String(200))
+    hook: Mapped[str] = mapped_column(String(200))
+
+    traffic_test: Mapped["TrafficTest"] = relationship(back_populates="creatives")
+
+
+class TrafficTest(Base):
+    __tablename__ = "traffic_tests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    hypothesis_id: Mapped[int] = mapped_column(ForeignKey("product_hypotheses.id"))
+    channel: Mapped[str] = mapped_column(String(100))
+    budget: Mapped[float] = mapped_column(Float)
+    test_plan: Mapped[str] = mapped_column(Text)
+    lifecycle_state: Mapped[TrafficTestState] = mapped_column(
+        Enum(TrafficTestState), default=TrafficTestState.planned
+    )
+
+    hypothesis: Mapped[ProductHypothesis] = relationship(back_populates="traffic_tests")
+    creatives: Mapped[list[Creative]] = relationship(back_populates="traffic_test")
+    metric_snapshots: Mapped[list["MetricSnapshot"]] = relationship(back_populates="traffic_test")
+
+
+class MetricSnapshot(Base):
+    __tablename__ = "metric_snapshots"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    traffic_test_id: Mapped[int] = mapped_column(ForeignKey("traffic_tests.id"))
+    day_label: Mapped[str] = mapped_column(String(40))
+    impressions: Mapped[int] = mapped_column(Integer)
+    clicks: Mapped[int] = mapped_column(Integer)
+    cpc: Mapped[float] = mapped_column(Float)
+    ctr: Mapped[float] = mapped_column(Float)
+    cpa: Mapped[float] = mapped_column(Float)
+    roas: Mapped[float] = mapped_column(Float)
+
+    traffic_test: Mapped[TrafficTest] = relationship(back_populates="metric_snapshots")
+
+
+class Decision(Base):
+    __tablename__ = "decisions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    hypothesis_id: Mapped[int] = mapped_column(ForeignKey("product_hypotheses.id"))
+    stage: Mapped[DecisionStage] = mapped_column(Enum(DecisionStage))
+    decision_value: Mapped[str] = mapped_column(String(60))
+    rationale: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    hypothesis: Mapped[ProductHypothesis] = relationship(back_populates="decisions")
+
+
+class ArtifactPackage(Base):
+    __tablename__ = "artifact_packages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    hypothesis_id: Mapped[int] = mapped_column(ForeignKey("product_hypotheses.id"))
+    package_type: Mapped[str] = mapped_column(String(80))
+    location_uri: Mapped[str] = mapped_column(String(400))
+    notes: Mapped[str] = mapped_column(Text)
+
+    hypothesis: Mapped[ProductHypothesis] = relationship(back_populates="artifacts")
+
+
+class KnowledgeBase(Base):
+    __tablename__ = "knowledge_base"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    hypothesis_id: Mapped[int] = mapped_column(ForeignKey("product_hypotheses.id"))
+    title: Mapped[str] = mapped_column(String(200))
+    finding: Mapped[str] = mapped_column(Text)
+    reusable_rule: Mapped[str] = mapped_column(Text)
+    tag: Mapped[str] = mapped_column(String(80))
+
+    hypothesis: Mapped[ProductHypothesis] = relationship(back_populates="knowledge_items")
+
+
+class FinalDecision(Base):
+    __tablename__ = "final_decisions"
+    __table_args__ = (UniqueConstraint("hypothesis_id", name="uq_final_decision_hypothesis"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    hypothesis_id: Mapped[int] = mapped_column(ForeignKey("product_hypotheses.id"), nullable=False)
+    final_outcome: Mapped[str] = mapped_column(String(20), nullable=False)
+    confidence: Mapped[int] = mapped_column(Integer, nullable=False)
+    rationale: Mapped[str] = mapped_column(Text, nullable=False)
+    owner: Mapped[str] = mapped_column(String(120), nullable=False)
+    lifecycle_state: Mapped[FinalDecisionState] = mapped_column(
+        Enum(FinalDecisionState), default=FinalDecisionState.recorded, nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    hypothesis: Mapped[ProductHypothesis] = relationship(back_populates="final_decision")
+
+
+class Postmortem(Base):
+    __tablename__ = "postmortems"
+    __table_args__ = (UniqueConstraint("hypothesis_id", name="uq_postmortem_hypothesis"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    hypothesis_id: Mapped[int] = mapped_column(ForeignKey("product_hypotheses.id"), nullable=False)
+    what_worked: Mapped[str] = mapped_column(Text, nullable=False)
+    what_failed: Mapped[str] = mapped_column(Text, nullable=False)
+    key_risks: Mapped[str] = mapped_column(Text, nullable=False)
+    next_action: Mapped[str] = mapped_column(String(40), nullable=False)
+    lessons: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    hypothesis: Mapped[ProductHypothesis] = relationship(back_populates="postmortem")
+
+
+class AgentRun(Base):
+    __tablename__ = "agent_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    hypothesis_id: Mapped[int | None] = mapped_column(ForeignKey("product_hypotheses.id"), nullable=True)
+    agent_type: Mapped[AgentType] = mapped_column(Enum(AgentType), nullable=False)
+    status: Mapped[AgentRunStatus] = mapped_column(Enum(AgentRunStatus), nullable=False)
+    trace_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    provider_snapshot: Mapped[str] = mapped_column(Text, nullable=False)
+    prompt_path: Mapped[str | None] = mapped_column(String(400), nullable=True)
+    prompt_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    input_payload: Mapped[str] = mapped_column(Text, nullable=False)
+    output_payload: Mapped[str | None] = mapped_column(Text, nullable=True)
+    warnings: Mapped[str | None] = mapped_column(Text, nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    hypothesis: Mapped[ProductHypothesis | None] = relationship(back_populates="agent_runs")
+    tasks: Mapped[list["AgentTask"]] = relationship(back_populates="run")
+    artifacts: Mapped[list["AgentArtifact"]] = relationship(back_populates="run")
+    decision_logs: Mapped[list["AgentDecisionLog"]] = relationship(back_populates="run")
+    source_evidences: Mapped[list["SourceEvidence"]] = relationship(back_populates="run")
+    product_scores: Mapped[list["ProductScore"]] = relationship(back_populates="run")
+    decision_cards: Mapped[list["DecisionCard"]] = relationship(back_populates="run")
+    incidents: Mapped[list["Incident"]] = relationship(back_populates="run")
+
+
+class AgentTask(Base):
+    __tablename__ = "agent_tasks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("agent_runs.id"), nullable=False)
+    task_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    status: Mapped[str] = mapped_column(String(40), nullable=False)
+    input_payload: Mapped[str] = mapped_column(Text, nullable=False)
+    output_payload: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    run: Mapped[AgentRun] = relationship(back_populates="tasks")
+
+
+class AgentArtifact(Base):
+    __tablename__ = "agent_artifacts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("agent_runs.id"), nullable=False)
+    artifact_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    content_uri: Mapped[str | None] = mapped_column(String(400), nullable=True)
+    provider_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    prompt_path: Mapped[str | None] = mapped_column(String(400), nullable=True)
+    trace_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    content_payload: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    run: Mapped[AgentRun] = relationship(back_populates="artifacts")
+
+
+class AgentDecisionLog(Base):
+    __tablename__ = "agent_decision_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("agent_runs.id"), nullable=False)
+    item_ref: Mapped[str] = mapped_column(String(200), nullable=False)
+    decision: Mapped[str] = mapped_column(String(60), nullable=False)
+    rationale: Mapped[str] = mapped_column(Text, nullable=False)
+    score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    run: Mapped[AgentRun] = relationship(back_populates="decision_logs")
+
+
+class SourceEvidence(Base):
+    __tablename__ = "source_evidence"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    hypothesis_id: Mapped[int] = mapped_column(ForeignKey("product_hypotheses.id"), nullable=False)
+    run_id: Mapped[int | None] = mapped_column(ForeignKey("agent_runs.id"), nullable=True)
+    evidence_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    source_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    source_uri: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    content_excerpt: Mapped[str] = mapped_column(Text, nullable=False)
+    collected_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    hypothesis: Mapped[ProductHypothesis] = relationship(back_populates="source_evidences")
+    run: Mapped[AgentRun | None] = relationship(back_populates="source_evidences")
+    signals: Mapped[list["NormalizedSignal"]] = relationship(back_populates="evidence")
+
+
+class NormalizedSignal(Base):
+    __tablename__ = "normalized_signals"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    hypothesis_id: Mapped[int] = mapped_column(ForeignKey("product_hypotheses.id"), nullable=False)
+    evidence_id: Mapped[int] = mapped_column(ForeignKey("source_evidence.id"), nullable=False)
+    signal_type: Mapped[ResearchSignalType] = mapped_column(Enum(ResearchSignalType), nullable=False)
+    value: Mapped[float] = mapped_column(Float, nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+    rationale: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    hypothesis: Mapped[ProductHypothesis] = relationship(back_populates="normalized_signals")
+    evidence: Mapped[SourceEvidence] = relationship(back_populates="signals")
+
+
+class ProductScore(Base):
+    __tablename__ = "product_scores"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    hypothesis_id: Mapped[int] = mapped_column(ForeignKey("product_hypotheses.id"), nullable=False)
+    run_id: Mapped[int | None] = mapped_column(ForeignKey("agent_runs.id"), nullable=True)
+    score_value: Mapped[float] = mapped_column(Float, nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+    score_breakdown: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    hypothesis: Mapped[ProductHypothesis] = relationship(back_populates="product_scores")
+    run: Mapped[AgentRun | None] = relationship(back_populates="product_scores")
+
+
+class DecisionCard(Base):
+    __tablename__ = "decision_cards"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    hypothesis_id: Mapped[int] = mapped_column(ForeignKey("product_hypotheses.id"), nullable=False)
+    run_id: Mapped[int | None] = mapped_column(ForeignKey("agent_runs.id"), nullable=True)
+    verdict: Mapped[ResearchDecisionVerdict] = mapped_column(
+        Enum(ResearchDecisionVerdict), nullable=False
+    )
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+    rationale: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    hypothesis: Mapped[ProductHypothesis] = relationship(back_populates="decision_cards")
+    run: Mapped[AgentRun | None] = relationship(back_populates="decision_cards")
+
+
+class Incident(Base):
+    __tablename__ = "incidents"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    hypothesis_id: Mapped[int] = mapped_column(ForeignKey("product_hypotheses.id"), nullable=False)
+    run_id: Mapped[int | None] = mapped_column(ForeignKey("agent_runs.id"), nullable=True)
+    task_id: Mapped[int | None] = mapped_column(ForeignKey("agent_tasks.id"), nullable=True)
+    severity: Mapped[IncidentSeverity] = mapped_column(Enum(IncidentSeverity), nullable=False)
+    code: Mapped[str] = mapped_column(String(80), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    recovery_action: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    hypothesis: Mapped[ProductHypothesis] = relationship(back_populates="incidents")
+    run: Mapped[AgentRun | None] = relationship(back_populates="incidents")
