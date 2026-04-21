@@ -1,0 +1,341 @@
+DIAGRAM 1 — MAIN DEMAND EVALUATION PROCESS
+```mermaid
+flowchart TB
+    subgraph L1["Лейн 1 · Product Owner / Аналитик"]
+        S((Старт))
+        H["Создать Product Hypothesis"]
+        P["Задать входные параметры<br/>категория, price range, angle,<br/>ограничения и hypothesis source"]
+    end
+
+    subgraph L2["Лейн 2 · Shopify Lab Core / API / Orchestrator"]
+        R["Создать Agent Run<br/>и research tasks"]
+        F{"Параллельный запуск<br/>исследовательских задач"}
+        J{"Все обязательные агенты<br/>завершены или истёк SLA?"}
+        W["Ждать / retry / timer SLA"]
+        N["Нормализация evidence<br/>в normalized signals"]
+        C{"Хватает обязательных<br/>сигналов для скоринга?"}
+        V["Верификация<br/>повторный сбор / manual review / source check"]
+        SC["Скоринг товара"]
+        RF{"Есть critical red flags?"}
+        CF{"Есть конфликт сигналов<br/>или low confidence?"}
+        DC["Сформировать Decision Card<br/>+ rationale + next step"]
+        VD{"Итоговый verdict"}
+        M["Снимать метрики этапов<br/>coverage, confidence, lead time,<br/>retry count, verification rate"]
+    end
+
+    subgraph L3["Лейн 3 · Агентная система"]
+        A1["Scout Agent<br/>рынок / ads / trends"]
+        A2["VoC Agent<br/>reviews / pains / objections"]
+        A3["Supplier Agent<br/>cost / shipping / risk"]
+    end
+
+    subgraph L4["Лейн 4 · Выход процесса"]
+        PASS["PASS<br/>передать в Offer / Page Stage"]
+        HOLD["HOLD<br/>дособрать данные / ручная проверка"]
+        REJECT["REJECT<br/>закрыть гипотезу"]
+        E((Конец))
+    end
+
+    S --> H --> P --> R --> F
+    F --> A1 --> J
+    F --> A2 --> J
+    F --> A3 --> J
+    J -- "нет" --> W --> J
+    J -- "да" --> N --> C
+    C -- "нет" --> V --> N
+    C -- "да" --> SC --> RF
+    RF -- "да" --> REJECT --> E
+    RF -- "нет" --> CF
+    CF -- "да" --> V
+    CF -- "нет" --> DC --> VD
+    VD -- "PASS" --> PASS --> E
+    VD -- "HOLD" --> HOLD --> E
+    VD -- "REJECT" --> REJECT
+
+    N -.-> M
+    SC -.-> M
+    DC -.-> M
+```
+
+DIAGRAM 2 — DATA FLOW
+```mermaid
+flowchart LR
+    subgraph S["Внешние источники данных"]
+        T1["TikTok Creative Center"]
+        T2["Meta Ad Library"]
+        T3["Marketplace listings"]
+        T4["Supplier pages / catalogs"]
+        T5["Reviews / forums / comments"]
+        T6["Trends / search signals"]
+    end
+
+    subgraph I["Слой ingestion"]
+        I1["Manual intake / Hypothesis API"]
+        I2["Browser Collector"]
+        I3["API Connectors"]
+    end
+
+    subgraph ST1["Слой сырого хранения"]
+        PH[("product_hypothesis")]
+        EV[("source_evidence")]
+        OS[("object_storage\nraw payloads / screenshots")]
+    end
+
+    subgraph P["Слой обработки"]
+        E1["Parser / LLM Extractor"]
+        E2["Signal Mapper / Normalizer"]
+        NS[("normalized_signal")]
+        E3["Score Engine"]
+        PS[("product_score")]
+        E4["Decision Service"]
+        DC[("decision_card")]
+    end
+
+    subgraph O["Потребители"]
+        O1["Analyst Dashboard"]
+        O2["Agent Orchestrator"]
+        O3["Offer / Page / Creative Stage"]
+        O4["Audit / Traceability"]
+    end
+
+    I1 --> PH
+    PH --> O2
+
+    T1 --> I2
+    T2 --> I2
+    T3 --> I2
+    T4 --> I2
+    T5 --> I2
+    T6 --> I3
+
+    I2 --> EV
+    I2 --> OS
+    I3 --> EV
+    I3 --> OS
+
+    EV --> E1
+    OS --> E1
+    E1 --> E2 --> NS
+
+    PH --> E3
+    NS --> E3 --> PS
+    NS --> E4
+    PS --> E4 --> DC
+
+    EV --> O4
+    NS --> O4
+    PS --> O4
+    DC --> O1
+    DC --> O3
+    DC --> O4
+```
+
+DIAGRAM 3 — AGENT SYSTEM PROCESS
+```mermaid
+flowchart TB
+    subgraph O["Лейн · Orchestrator"]
+        S(("Старт research run"))
+        O1["Создать задачи:<br/>scout / voc / supplier"]
+        O2{"Параллельный fan-out"}
+        O3{"Minimum signal contract<br/>достигнут или истёк SLA?"}
+        O4["Retry / manual verification routing"]
+    end
+
+    subgraph A1["Лейн · Scout Agent"]
+        S1["Собрать market / ads / trend sources"]
+        S2["Сохранить raw evidence"]
+        S3["Извлечь market + creative signals"]
+        S4["Опубликовать completion"]
+    end
+
+    subgraph A2["Лейн · VoC Agent"]
+        V1["Собрать reviews / forums / comments"]
+        V2["Сохранить raw evidence"]
+        V3["Извлечь pains / objections / use cases"]
+        V4["Опубликовать completion"]
+    end
+
+    subgraph A3["Лейн · Supplier Agent"]
+        P1["Собрать supplier pages / offers"]
+        P2["Сохранить raw evidence"]
+        P3["Извлечь cost / shipping / MOQ / risk"]
+        P4["Опубликовать completion"]
+    end
+
+    subgraph A4["Лейн · Decision Agent"]
+        D1["Загрузить hypothesis + normalized signals"]
+        D2{"Есть обязательные блоки:<br/>market + voc + supplier + economics?"}
+        D3["Посчитать score + confidence"]
+        D4{"Есть critical red flags<br/>или signal conflict?"}
+        D5["Сформировать decision_card"]
+        D6["Вернуть PASS / HOLD / REJECT"]
+    end
+
+    S --> O1 --> O2
+    O2 --> S1 --> S2 --> S3 --> S4 --> O3
+    O2 --> V1 --> V2 --> V3 --> V4 --> O3
+    O2 --> P1 --> P2 --> P3 --> P4 --> O3
+
+    O3 -- "нет" --> O4 --> O3
+    O3 -- "да" --> D1 --> D2
+    D2 -- "нет" --> O4
+    D2 -- "да" --> D3 --> D4
+    D4 -- "да" --> O4
+    D4 -- "нет" --> D5 --> D6
+```
+
+DIAGRAM 4 — DECISION LOGIC / SCORING
+```mermaid
+flowchart TB
+    S(("Start decision logic"))
+    I["Загрузить normalized signals"]
+    M{"Есть mandatory data?"}
+    H1["HOLD<br/>недостаточно данных"]
+    RF{"Есть hard red flags?"}
+    RFN["Hard red flags:<br/>margin below floor<br/>compliance risk<br/>shipping too slow<br/>fragility / return risk high<br/>supplier unverifiable<br/>3-second clarity = fail"]
+    R1["REJECT<br/>critical risk"]
+    C1["Вычислить sub-scores:<br/>clarity 15<br/>wow/demo 15<br/>demand 20<br/>creative 10<br/>supplier 15<br/>economics 15<br/>logistics 10"]
+    T1["total_score = сумма sub-scores"]
+    C2["Рассчитать confidence:<br/>source_count, agreement,<br/>freshness, completeness"]
+    G{"Есть signal conflict<br/>или high variance?"}
+    H2["HOLD<br/>secondary verification"]
+    TH{"Пороговый verdict"}
+    P1["PASS<br/>score >= 75 и confidence >= 0.70"]
+    H3["HOLD<br/>60-74 или confidence 0.50-0.69"]
+    R2["REJECT<br/>score < 60"]
+    OUT["Сформировать decision_card<br/>verdict + rationale + next_step"]
+
+    S --> I --> M
+    M -- "нет" --> H1 --> OUT
+    M -- "да" --> RF
+    RFN -.-> RF
+    RF -- "да" --> R1 --> OUT
+    RF -- "нет" --> C1 --> T1 --> C2 --> G
+    G -- "да" --> H2 --> OUT
+    G -- "нет" --> TH
+    TH -- "PASS" --> P1 --> OUT
+    TH -- "HOLD" --> H3 --> OUT
+    TH -- "REJECT" --> R2 --> OUT
+```
+
+DIAGRAM 5 — EXCEPTION HANDLING PROCESS
+```mermaid
+flowchart TB
+    E(("Boundary Error / Timeout Event"))
+    C{"Класс исключения"}
+
+    M1["Missing data<br/>по обязательному блоку"]
+    M2["Targeted retry<br/>по missing agent / source"]
+    M3{"Данные получены<br/>до SLA?"}
+    M4["Вернуть в normalization / scoring"]
+    M5["HOLD + manual enrichment task"]
+
+    X1["Conflict signals<br/>между источниками"]
+    X2["Secondary source collection<br/>+ cross-check"]
+    X3{"Конфликт снят?"}
+    X4["Вернуть в decision logic"]
+    X5["HOLD / analyst review"]
+
+    R1["Critical risk"]
+    R2["Лог risk evidence"]
+    R3["REJECT"]
+
+    T1["System / parser / storage / API failure"]
+    T2["Retry with backoff<br/>1..N attempts"]
+    T3{"Восстановлено?"}
+    T4["Продолжить stage"]
+    T5["Create incident / alert<br/>Pause run"]
+    T6["HOLD technical"]
+
+    E --> C
+    C -- "Нет данных" --> M1 --> M2 --> M3
+    M3 -- "да" --> M4
+    M3 -- "нет" --> M5
+
+    C -- "Конфликт сигналов" --> X1 --> X2 --> X3
+    X3 -- "да" --> X4
+    X3 -- "нет" --> X5
+
+    C -- "Критический риск" --> R1 --> R2 --> R3
+
+    C -- "Техническая ошибка" --> T1 --> T2 --> T3
+    T3 -- "да" --> T4
+    T3 -- "нет" --> T5 --> T6
+```
+
+DIAGRAM 6 — DEPLOYMENT / COMPONENT INTERACTION
+```mermaid
+flowchart LR
+    subgraph C["Клиенты / интерфейсы"]
+        UI["Analyst UI / Admin Panel"]
+        APIUser["External API consumer"]
+    end
+
+    subgraph APP["Приложение Shopify Lab"]
+        GW["API Gateway / FastAPI"]
+        ORCH["Research Orchestrator Service"]
+        QUEUE["Queue / Scheduler"]
+        SCORE["Score + Decision Service"]
+        PARSE["Parser / LLM Extractor Adapter"]
+    end
+
+    subgraph AG["Агентные воркеры"]
+        AG1["Scout Worker"]
+        AG2["VoC Worker"]
+        AG3["Supplier Worker"]
+        AG4["Decision Worker"]
+    end
+
+    subgraph DATA["Хранилища"]
+        DB[("Postgres\nproduct_hypothesis\nsource_evidence\nnormalized_signal\nproduct_score\ndecision_card")]
+        OBJ[("Object Storage\nscreenshots / raw payloads")]
+    end
+
+    subgraph OBS["Наблюдаемость"]
+        LOG["Logs / Metrics / Traces"]
+        ALERT["Alerts / Incident channel"]
+    end
+
+    subgraph EXT["Внешние источники"]
+        EX1["TikTok / Meta / Trends"]
+        EX2["Marketplaces / Reviews"]
+        EX3["Supplier sites / catalogs"]
+    end
+
+    UI --> GW
+    APIUser --> GW
+    GW --> ORCH
+    ORCH --> QUEUE
+    ORCH --> SCORE
+    QUEUE --> AG1
+    QUEUE --> AG2
+    QUEUE --> AG3
+    QUEUE --> AG4
+
+    AG1 --> EX1
+    AG1 --> EX2
+    AG2 --> EX2
+    AG3 --> EX3
+
+    AG1 --> PARSE
+    AG2 --> PARSE
+    AG3 --> PARSE
+    PARSE --> DB
+    AG1 --> OBJ
+    AG2 --> OBJ
+    AG3 --> OBJ
+
+    SCORE --> DB
+    AG4 --> DB
+    AG4 --> SCORE
+    GW --> DB
+    GW --> OBJ
+
+    ORCH -.-> LOG
+    SCORE -.-> LOG
+    AG1 -.-> LOG
+    AG2 -.-> LOG
+    AG3 -.-> LOG
+    AG4 -.-> LOG
+    LOG --> ALERT
+```
