@@ -5,6 +5,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.models.enums import AgentRunStatus, AgentType, DecisionStage, HypothesisStatus
+from app.models.enums import (
+    FinalDecisionState,
+    HypothesisLifecycleState,
+    LandingPageState,
+    TrafficTestState,
+)
 
 
 class ProductHypothesis(Base):
@@ -16,6 +22,9 @@ class ProductHypothesis(Base):
     target_audience: Mapped[str] = mapped_column(String(200))
     status: Mapped[HypothesisStatus] = mapped_column(
         Enum(HypothesisStatus), default=HypothesisStatus.draft
+    )
+    lifecycle_state: Mapped[HypothesisLifecycleState] = mapped_column(
+        Enum(HypothesisLifecycleState), default=HypothesisLifecycleState.product_discovery
     )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
@@ -124,6 +133,9 @@ class LandingPage(Base):
     offer_block: Mapped[str] = mapped_column(Text)
     faq_block: Mapped[str] = mapped_column(Text)
     mobile_ready: Mapped[int] = mapped_column(Integer, default=0)
+    lifecycle_state: Mapped[LandingPageState] = mapped_column(
+        Enum(LandingPageState), default=LandingPageState.draft
+    )
 
     offer: Mapped[Offer] = relationship(back_populates="landing_pages")
 
@@ -148,6 +160,9 @@ class TrafficTest(Base):
     channel: Mapped[str] = mapped_column(String(100))
     budget: Mapped[float] = mapped_column(Float)
     test_plan: Mapped[str] = mapped_column(Text)
+    lifecycle_state: Mapped[TrafficTestState] = mapped_column(
+        Enum(TrafficTestState), default=TrafficTestState.planned
+    )
 
     hypothesis: Mapped[ProductHypothesis] = relationship(back_populates="traffic_tests")
     creatives: Mapped[list[Creative]] = relationship(back_populates="traffic_test")
@@ -218,6 +233,9 @@ class FinalDecision(Base):
     confidence: Mapped[int] = mapped_column(Integer, nullable=False)
     rationale: Mapped[str] = mapped_column(Text, nullable=False)
     owner: Mapped[str] = mapped_column(String(120), nullable=False)
+    lifecycle_state: Mapped[FinalDecisionState] = mapped_column(
+        Enum(FinalDecisionState), default=FinalDecisionState.recorded, nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     hypothesis: Mapped[ProductHypothesis] = relationship(back_populates="final_decision")

@@ -28,6 +28,7 @@ def test_cycle_report_export_smoke(tmp_path) -> None:
     assert data["hypothesis_summary"]["status"] == "ok"
     assert data["product_card"]["status"] == "ok"
     assert data["final_decision"]["status"] == "ok"
+    assert data["report_meta"]["cycle_completeness"] == "complete"
     assert md_path.exists()
 
 
@@ -70,6 +71,7 @@ def test_cycle_report_partial_cycle_marks_missing() -> None:
     assert report["product_card"]["status"] == "ok"
     assert report["offer"]["status"] == "missing"
     assert report["traffic_test"]["status"] == "missing"
+    assert report["report_meta"]["cycle_completeness"] == "partial"
     assert "MISSING: no data recorded for this section." in markdown
 
 

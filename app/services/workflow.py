@@ -20,6 +20,7 @@ from app.schemas.decision import FinalDecisionCreate, PostmortemCreate
 from app.schemas.hypothesis import ProductCardCreate, ProductHypothesisCreate
 from app.services.finalization import register_final_decision
 from app.services.scoring import score_product
+from app.services.state_machine import complete_traffic_test, mark_landing_ready, start_traffic_test
 from app.services.unit_economics import UnitEconomicsInput, calculate_unit_economics
 
 
@@ -118,17 +119,18 @@ def run_demo_cycle(db: Session) -> ProductHypothesis:
         db.add(offer)
         db.flush()
 
-        db.add(
-            LandingPage(
-                offer_id=offer.id,
-                hero_block="Fresh smoothie at your desk",
-                benefits_block="Fast blend, compact, rechargeable",
-                proof_block="UGC demos + before/after routine",
-                offer_block="39 USD + free shaker",
-                faq_block="Shipping, warranty, battery",
-                mobile_ready=1,
-            )
+        landing_page = LandingPage(
+            offer_id=offer.id,
+            hero_block="Fresh smoothie at your desk",
+            benefits_block="Fast blend, compact, rechargeable",
+            proof_block="UGC demos + before/after routine",
+            offer_block="39 USD + free shaker",
+            faq_block="Shipping, warranty, battery",
+            mobile_ready=1,
         )
+        db.add(landing_page)
+        db.flush()
+        mark_landing_ready(hypothesis, landing_page)
 
         traffic = TrafficTest(
             hypothesis_id=hypothesis.id,
@@ -138,6 +140,7 @@ def run_demo_cycle(db: Session) -> ProductHypothesis:
         )
         db.add(traffic)
         db.flush()
+        start_traffic_test(hypothesis, landing_page, traffic)
 
         db.add_all(
             [
@@ -171,6 +174,7 @@ def run_demo_cycle(db: Session) -> ProductHypothesis:
                 ),
             ]
         )
+        complete_traffic_test(hypothesis, traffic)
 
         traffic_decision = Decision(
             hypothesis_id=hypothesis.id,

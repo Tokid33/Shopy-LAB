@@ -29,3 +29,7 @@
 ## D-009: Dual-mode agent execution (mock + real)
 Mock mode остаётся default и безопасным.
 Real mode включается конфигом и проходит через provider factory с controlled failures при misconfiguration.
+
+## D-010: State discipline как обязательный слой v1.0
+Lifecycle transitions и инварианты вынесены в service-layer state machine.
+Невалидные переходы блокируются, а финализация требует completed traffic и consistency checks.

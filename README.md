@@ -1,4 +1,4 @@
-# Shopify Lab MVP
+# Shopify Lab v1.0.0
 
 Минимальный, но рабочий контур системы проверки e-commerce гипотез по циклу:
 
@@ -8,7 +8,7 @@
 - Набор BPMN/UML/ER диаграмм в виде изображений (`*.png`), отражающих процессы и архитектурный контекст.
 - Пустой `README.md`.
 
-## Что сделано в MVP
+## Что входит в v1.0
 - Реализован Python-проект на FastAPI + SQLAlchemy + Pydantic + Alembic + SQLite.
 - Добавлена доменная модель с 12 ключевыми сущностями.
 - Добавлена доменная модель с расширением v0.2: `UnitEconomics`, `FinalDecision`, `Postmortem`.
@@ -19,6 +19,7 @@
 - Добавлен первый agent-ready слой: Product Scout Agent и Supplier Check Agent (demo/mock).
 - Добавлены тесты: scoring, smoke workflow, model checks.
 - Добавлена документация по архитектуре, доменной модели, workflow и решениям.
+- Добавлена state machine дисциплина и release docs v1.0.
 
 ## Структура
 - `app/main.py` — FastAPI app
@@ -126,6 +127,16 @@ curl -X POST http://localhost:8000/agents/product-scout/run-real \
   -d '{"market":"US","categories":["kitchen"],"limit":3}'
 ```
 
+## Operator path (v1.0)
+```bash
+python -m pip install -e .[dev]
+python -m alembic upgrade head
+uvicorn app.main:app --reload
+python -m app.cli.demo_cycle
+python -m app.cli.export_cycle_report --hypothesis-id 1
+pytest -q
+```
+
 ## Тесты
 ```bash
 pytest
@@ -157,3 +168,8 @@ pytest
 
 ## v0.2 hard audit
 Подробный аудит текущего состояния v0.2 и rationale по cycle report export: `docs/audit-v0.2.md`.
+
+## Release docs
+- `docs/state-machine.md`
+- `docs/release-v1.0.md`
+- `CHANGELOG.md`

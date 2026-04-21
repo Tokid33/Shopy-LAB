@@ -40,3 +40,12 @@
 1. `POST /agents/product-scout/run-real` — ограниченный real execution path через adapters.
 2. `POST /agents/supplier-check/run-real` — ограниченный real execution path через adapters.
 3. `GET /agents/providers/health` — health/config visibility по провайдерам.
+
+## Operator path v1.0
+1. Поднять БД (`alembic upgrade head`)
+2. Поднять API
+3. Выполнить `POST /demo-cycle`
+4. Экспортировать report (`python -m app.cli.export_cycle_report --hypothesis-id 1`)
+5. Проверить `GET /agents/providers/health`
+6. Запустить mock agent runs
+7. При валидной env-конфигурации запустить real agent runs

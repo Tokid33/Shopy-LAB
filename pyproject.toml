@@ -1,6 +1,6 @@
 [project]
 name = "shopify-lab"
-version = "0.1.0"
+version = "1.0.0"
 description = "MVP-контур Shopify Lab: продуктовые гипотезы и короткие e-commerce циклы"
 readme = "README.md"
 requires-python = ">=3.11"

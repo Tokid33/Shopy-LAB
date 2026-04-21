@@ -59,11 +59,21 @@ def build_cycle_report(db: Session, hypothesis_id: int) -> dict:
     first_offer = hypothesis.offers[0] if hypothesis.offers else None
     first_traffic_test = hypothesis.traffic_tests[0] if hypothesis.traffic_tests else None
 
+    has_complete_cycle = bool(
+        hypothesis.product_card
+        and hypothesis.unit_economics
+        and hypothesis.offers
+        and hypothesis.traffic_tests
+        and hypothesis.final_decision
+        and hypothesis.postmortem
+    )
+
     report = {
         "report_meta": {
             "hypothesis_id": hypothesis.id,
-            "report_version": "v0.2",
+            "report_version": "v1.0",
             "generated_for_status": hypothesis.status.value,
+            "cycle_completeness": "complete" if has_complete_cycle else "partial",
         },
         "hypothesis_summary": {
             "status": "ok",

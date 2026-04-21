@@ -7,6 +7,7 @@
 - **API (FastAPI)**: health + запуск demo cycle.
 - **Service layer**: scoring, unit economics, strict finalization/postmortem, cycle report export, agent orchestration.
 - **Agent infra layer**: provider factory, prompt loading, traceability, health visibility.
+- **State machine layer**: lifecycle transitions and domain invariants enforcement.
 - **Repository layer**: базовые операции с гипотезами.
 - **Data layer**: SQLAlchemy модели + Alembic миграции + SQLite.
 - **Tests**: unit/smoke/model проверки.
