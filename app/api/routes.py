@@ -19,6 +19,7 @@ from app.schemas.research import (
     DecisionCardResponse,
     EvidenceIngestRequest,
     EvidenceIngestResponse,
+    EvaluationResponse,
     NormalizationResponse,
     ResearchRunCreateResponse,
     ResearchRunStatusResponse,
@@ -31,7 +32,7 @@ from app.services.agents.services import (
     parse_run_payload,
 )
 from app.services.agents.providers import ProviderResolutionError, provider_health
-from app.services.research import ResearchIngestionService, ResearchOrchestrator
+from app.services.research import ResearchDecisionService, ResearchIngestionService, ResearchOrchestrator
 from app.services.workflow import run_demo_cycle
 
 router = APIRouter()
@@ -191,4 +192,22 @@ def normalize_research_run(run_id: int, db: Session = Depends(get_db)) -> Normal
         run_id=summary.run_id,
         created_signals=summary.created_signals,
         minimal_signal_pack_ready=summary.minimal_signal_pack_ready,
+    )
+
+
+@router.post("/research-runs/{run_id}/evaluate", response_model=EvaluationResponse)
+def evaluate_research_run(run_id: int, db: Session = Depends(get_db)) -> EvaluationResponse:
+    service = ResearchDecisionService(db)
+    try:
+        summary = service.evaluate_run(run_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return EvaluationResponse(
+        hypothesis_id=summary.hypothesis_id,
+        run_id=summary.run_id,
+        verdict=summary.verdict,
+        score_value=summary.score_value,
+        confidence=summary.confidence,
+        rationale=summary.rationale,
+        red_flags=summary.red_flags,
     )

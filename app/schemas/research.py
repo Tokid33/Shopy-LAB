@@ -45,3 +45,13 @@ class NormalizationResponse(BaseModel):
     run_id: int
     created_signals: int
     minimal_signal_pack_ready: bool
+
+
+class EvaluationResponse(BaseModel):
+    hypothesis_id: int
+    run_id: int
+    verdict: ResearchDecisionVerdict
+    score_value: float
+    confidence: float
+    rationale: str
+    red_flags: list[str]
