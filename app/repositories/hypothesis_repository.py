@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.models import ProductHypothesis
-from app.schemas.hypothesis import ProductHypothesisCreate
+from app.schemas.hypothesis import ProductHypothesisCreate, ProductHypothesisUpdate
 
 
 class ProductHypothesisRepository:
@@ -16,3 +16,11 @@ class ProductHypothesisRepository:
 
     def get(self, hypothesis_id: int) -> ProductHypothesis | None:
         return self.db.get(ProductHypothesis, hypothesis_id)
+
+    def update(self, entity: ProductHypothesis, payload: ProductHypothesisUpdate) -> ProductHypothesis:
+        for field, value in payload.model_dump(exclude_unset=True).items():
+            setattr(entity, field, value)
+        self.db.add(entity)
+        self.db.commit()
+        self.db.refresh(entity)
+        return entity

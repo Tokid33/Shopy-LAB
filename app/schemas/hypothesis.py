@@ -1,10 +1,27 @@
 from pydantic import BaseModel, Field
 
+from app.models.enums import HypothesisStatus
+
 
 class ProductHypothesisCreate(BaseModel):
     title: str
     problem_statement: str
     target_audience: str
+
+
+class ProductHypothesisUpdate(BaseModel):
+    title: str | None = None
+    problem_statement: str | None = None
+    target_audience: str | None = None
+    status: HypothesisStatus | None = None
+
+
+class ProductHypothesisResponse(BaseModel):
+    id: int
+    title: str
+    problem_statement: str
+    target_audience: str
+    status: HypothesisStatus
 
 
 class ProductCardCreate(BaseModel):

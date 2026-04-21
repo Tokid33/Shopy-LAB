@@ -2,12 +2,23 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.repositories.hypothesis_repository import ProductHypothesisRepository
 from app.schemas.agents import (
     AgentRunStatusResponse,
     ProductScoutRunRequest,
     ProductScoutRunResponse,
     SupplierCheckRunRequest,
     SupplierCheckRunResponse,
+)
+from app.schemas.hypothesis import (
+    ProductHypothesisCreate,
+    ProductHypothesisResponse,
+    ProductHypothesisUpdate,
+)
+from app.schemas.research import (
+    DecisionCardResponse,
+    ResearchRunCreateResponse,
+    ResearchRunStatusResponse,
 )
 from app.services.agents.services import (
     AgentExecutionError,
@@ -17,6 +28,7 @@ from app.services.agents.services import (
     parse_run_payload,
 )
 from app.services.agents.providers import ProviderResolutionError, provider_health
+from app.services.research import ResearchOrchestrator
 from app.services.workflow import run_demo_cycle
 
 router = APIRouter()
@@ -74,3 +86,71 @@ def get_agent_run_status(run_id: int, db: Session = Depends(get_db)) -> AgentRun
     if not run:
         raise HTTPException(status_code=404, detail=f"Agent run {run_id} not found")
     return AgentRunStatusResponse(**parse_run_payload(run))
+
+
+@router.post("/hypotheses", response_model=ProductHypothesisResponse)
+def create_hypothesis(payload: ProductHypothesisCreate, db: Session = Depends(get_db)) -> ProductHypothesisResponse:
+    repo = ProductHypothesisRepository(db)
+    entity = repo.create(payload)
+    db.commit()
+    db.refresh(entity)
+    return ProductHypothesisResponse.model_validate(entity, from_attributes=True)
+
+
+@router.get("/hypotheses/{hypothesis_id}", response_model=ProductHypothesisResponse)
+def get_hypothesis(hypothesis_id: int, db: Session = Depends(get_db)) -> ProductHypothesisResponse:
+    repo = ProductHypothesisRepository(db)
+    entity = repo.get(hypothesis_id)
+    if not entity:
+        raise HTTPException(status_code=404, detail=f"Hypothesis {hypothesis_id} not found")
+    return ProductHypothesisResponse.model_validate(entity, from_attributes=True)
+
+
+@router.patch("/hypotheses/{hypothesis_id}", response_model=ProductHypothesisResponse)
+def patch_hypothesis(
+    hypothesis_id: int, payload: ProductHypothesisUpdate, db: Session = Depends(get_db)
+) -> ProductHypothesisResponse:
+    repo = ProductHypothesisRepository(db)
+    entity = repo.get(hypothesis_id)
+    if not entity:
+        raise HTTPException(status_code=404, detail=f"Hypothesis {hypothesis_id} not found")
+    updated = repo.update(entity, payload)
+    return ProductHypothesisResponse.model_validate(updated, from_attributes=True)
+
+
+@router.post("/hypotheses/{hypothesis_id}/research-runs", response_model=ResearchRunCreateResponse)
+def create_research_run(hypothesis_id: int, db: Session = Depends(get_db)) -> ResearchRunCreateResponse:
+    orchestrator = ResearchOrchestrator(db)
+    try:
+        run = orchestrator.start_run(hypothesis_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return ResearchRunCreateResponse(
+        run_id=run.id,
+        hypothesis_id=hypothesis_id,
+        status=run.status,
+        planned_tasks=ResearchOrchestrator.PLANNED_TASKS,
+    )
+
+
+@router.get("/research-runs/{run_id}", response_model=ResearchRunStatusResponse)
+def get_research_run(run_id: int, db: Session = Depends(get_db)) -> ResearchRunStatusResponse:
+    orchestrator = ResearchOrchestrator(db)
+    run = orchestrator.get_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail=f"Research run {run_id} not found")
+    return ResearchRunStatusResponse(
+        run_id=run.id,
+        hypothesis_id=run.hypothesis_id,
+        status=run.status,
+        tasks=[{"id": task.id, "name": task.task_name, "status": task.status} for task in run.tasks],
+    )
+
+
+@router.get("/hypotheses/{hypothesis_id}/decision-card", response_model=DecisionCardResponse)
+def get_hypothesis_decision_card(hypothesis_id: int, db: Session = Depends(get_db)) -> DecisionCardResponse:
+    orchestrator = ResearchOrchestrator(db)
+    card = orchestrator.get_decision_card(hypothesis_id)
+    if not card:
+        raise HTTPException(status_code=404, detail=f"Decision card for hypothesis {hypothesis_id} not found")
+    return DecisionCardResponse.model_validate(card, from_attributes=True)
