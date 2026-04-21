@@ -27,3 +27,21 @@ class DecisionCardResponse(BaseModel):
     confidence: float
     rationale: str
     created_at: datetime
+
+
+class EvidenceIngestRequest(BaseModel):
+    evidence_type: str
+    source_name: str
+    content_excerpt: str
+    source_uri: str | None = None
+
+
+class EvidenceIngestResponse(BaseModel):
+    evidence_id: int
+    minimal_signal_pack_ready: bool
+
+
+class NormalizationResponse(BaseModel):
+    run_id: int
+    created_signals: int
+    minimal_signal_pack_ready: bool

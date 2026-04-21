@@ -17,6 +17,9 @@ from app.schemas.hypothesis import (
 )
 from app.schemas.research import (
     DecisionCardResponse,
+    EvidenceIngestRequest,
+    EvidenceIngestResponse,
+    NormalizationResponse,
     ResearchRunCreateResponse,
     ResearchRunStatusResponse,
 )
@@ -28,7 +31,7 @@ from app.services.agents.services import (
     parse_run_payload,
 )
 from app.services.agents.providers import ProviderResolutionError, provider_health
-from app.services.research import ResearchOrchestrator
+from app.services.research import ResearchIngestionService, ResearchOrchestrator
 from app.services.workflow import run_demo_cycle
 
 router = APIRouter()
@@ -154,3 +157,38 @@ def get_hypothesis_decision_card(hypothesis_id: int, db: Session = Depends(get_d
     if not card:
         raise HTTPException(status_code=404, detail=f"Decision card for hypothesis {hypothesis_id} not found")
     return DecisionCardResponse.model_validate(card, from_attributes=True)
+
+
+@router.post("/research-runs/{run_id}/evidence", response_model=EvidenceIngestResponse)
+def ingest_research_evidence(
+    run_id: int, payload: EvidenceIngestRequest, db: Session = Depends(get_db)
+) -> EvidenceIngestResponse:
+    ingestion = ResearchIngestionService(db)
+    try:
+        summary = ingestion.save_evidence(
+            run_id=run_id,
+            evidence_type=payload.evidence_type,
+            source_name=payload.source_name,
+            content_excerpt=payload.content_excerpt,
+            source_uri=payload.source_uri,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return EvidenceIngestResponse(
+        evidence_id=summary.created_evidence_id,
+        minimal_signal_pack_ready=summary.minimal_signal_pack_ready,
+    )
+
+
+@router.post("/research-runs/{run_id}/normalize", response_model=NormalizationResponse)
+def normalize_research_run(run_id: int, db: Session = Depends(get_db)) -> NormalizationResponse:
+    ingestion = ResearchIngestionService(db)
+    try:
+        summary = ingestion.normalize_run_evidence(run_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return NormalizationResponse(
+        run_id=summary.run_id,
+        created_signals=summary.created_signals,
+        minimal_signal_pack_ready=summary.minimal_signal_pack_ready,
+    )
